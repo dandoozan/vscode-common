@@ -1,4 +1,4 @@
-import { generateAst, findEnclosingString } from "../utils";
+import { generateAst, findEnclosingStringNode } from "../utils";
 
 describe('Tbx', () => {
     it('should true', () => {
@@ -6,12 +6,12 @@ describe('Tbx', () => {
     });
 });
 
-describe('findEnclosingString', () => {
+describe('findEnclosingStringNode', () => {
     it('should find string when cursor is at beginning of a double-quote string', () => {
         const code = '("String contents")';
         const ast = generateAst(code, 'javascript');
         const cursorLocation = 5;
-        const enclosingString = findEnclosingString(ast, cursorLocation);
+        const enclosingString = findEnclosingStringNode(ast, cursorLocation);
 
         if (enclosingString) {
             expect(enclosingString.start).toBe(1);

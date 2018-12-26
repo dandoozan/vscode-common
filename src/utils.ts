@@ -5,9 +5,11 @@ import {
     TextEditor,
     Position,
     Selection,
+    Range,
+    TextDocument,
 } from 'vscode';
 import { parse, ParserOptions } from '@babel/parser';
-import { Node, isStringLiteral } from '@babel/types';
+import { Node, isStringLiteral, isTemplateLiteral } from '@babel/types';
 import { isArray, isObject, isNumber } from 'lodash';
 
 export function addCommand(
@@ -103,20 +105,58 @@ function isCursorInsideNode(cursorLocation: number, node: Node) {
     return (
         isNumber(node.start) &&
         isNumber(node.end) &&
-        node.start <= cursorLocation &&
+        node.start < cursorLocation &&
         cursorLocation < node.end
     );
 }
+function isCursorTouchingNode(cursorLocation: number, node: Node) {
+    return (
+        isNumber(node.start) &&
+        isNumber(node.end) &&
+        node.start <= cursorLocation &&
+        cursorLocation <= node.end
+    );
+}
 
-export function findEnclosingString(ast: Node | null, cursorLocation: number) {
+export function findEnclosingStringNode(
+    ast: Node | null,
+    cursorLocation: number
+) {
     if (ast) {
         const allEnclosingStrings = filterAst(
             ast,
             (node: Node) =>
-                isStringLiteral(node) &&
+                (isStringLiteral(node) || isTemplateLiteral(node)) &&
                 isCursorInsideNode(cursorLocation, node)
         );
         return allEnclosingStrings[0];
+    }
+}
+
+export function getNodeBoundaries(node: Node | undefined) {
+    if (node && isNumber(node.start) && isNumber(node.end)) {
+        return { start: node.start, end: node.end };
+    }
+}
+
+export function getRangeFromOffsets(
+    document: TextDocument,
+    start: number,
+    end: number
+) {
+    return new Range(document.positionAt(start), document.positionAt(end));
+}
+
+export async function deleteBetween(
+    editor: TextEditor,
+    start: number | null,
+    end: number | null
+) {
+    if (isNumber(start) && isNumber(end)) {
+        const range = getRangeFromOffsets(editor.document, start, end);
+        await editor.edit(editBuilder => {
+            editBuilder.delete(range);
+        });
     }
 }
 
