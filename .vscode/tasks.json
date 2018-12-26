@@ -1,0 +1,19 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "script": "watch",
+            "problemMatcher": "$tsc-watch",
+            "isBackground": true, // <-- i don't know if I need this, but it was in the "yo code" template, so I included it here
+            "presentation": {
+				"reveal": "never" // <-- to make the task NOT show the task pane in the terminal on startup (ie. to make it open in the background)
+            },
+            "runOptions": {
+                "runOn": "folderOpen" // <-- to make this task run when I open this workspace
+            }
+        }
+    ]
+}

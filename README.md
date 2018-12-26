@@ -1,5 +1,15 @@
 # VscodeKeyboardShortcuts
 
+## A note on testing
+
+I'm only testing the non-vscode functions (ie. functions that don't use the
+"vscode" api).  This is because the vscode functions require starting up an
+instance of vscode, which will require a ton more configuration in this project
+to get going.  Besides, this project only has files that are meant to be
+included in actual vscode extensions, so I'm leaving it to them to test the
+vscode side of things.
+
+
 ## Symlink vs. npm link
 
 Here are my options:
@@ -55,40 +65,3 @@ My strategy:
     releasing it. This is terrible because it creates a fork of the utils file,
     but I don't see any other way of getting around this (outside of publishing
     my utils in an npm package and including it as a dependency in the project).
-
-## A note on testing
-
-The way I see it, I have the following testing options
-
--   heavy integration tests (ie. test the commands), unit test where needed
-    -   benefits:
-        -   easier to develop (i can pass around complex objects, like Editors)
-        -   you'll know the commands work
-    -   drawbacks:
-        -   i'll have to create and open a file when testing; options for how to do this:
-            -   create a new file for each test
-                -   benefits:
-                    -   the file text and cursor location are close to the test
-                -   drawbacks:
-                    -   a new file is created for every test, meaning A LOT of
-                        files are created
-            -   create one file and erase and write the text for each test
-                -   benefits:
-                    -   only one file is created
-                    -   the file text and cursor location are close to the test
-                -   drawbacks:
-                    -   it requires set up and teardown after each file
-            -   create a separate file in the project
-                -   drawbacks:
-                    -   the text is far away from the test code that defines the
-                        cursor position
--   heavy unit test, a few integration tests
-    -   benefits:
-        -   easier to test (i'll make the functions only take in primitive/simple
-            types)
-        -   i can write one set of tests for functions that are used multiple
-            times, and then write simple tests for the commands
-    -   drawbacks:
-        -   harder to develop (i'll have to do setup in the code to avoid
-            passing in complex objects)
-        -   I'm not testing the actual "commands", so those could be broken

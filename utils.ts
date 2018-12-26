@@ -109,14 +109,15 @@ function isCursorInsideNode(cursorLocation: number, node: Node) {
 }
 
 export function findEnclosingString(ast: Node, cursorLocation: number) {
-    return filterAst(
+    const allEnclosingStrings = filterAst(
         ast,
         (node: Node) =>
             isStringLiteral(node) && isCursorInsideNode(cursorLocation, node)
     );
+    return allEnclosingStrings[0];
 }
 
-export function setCursor(editor, offset) {
+export function setCursor(editor: TextEditor, offset: number) {
     const pos = editor.document.positionAt(offset);
     editor.selection = new Selection(pos, pos);
 }
