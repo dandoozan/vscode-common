@@ -6,12 +6,12 @@ describe('Tbx', function () {
         expect(true).toBe(true);
     });
 });
-describe('findEnclosingString', function () {
+describe('findEnclosingStringNode', function () {
     it('should find string when cursor is at beginning of a double-quote string', function () {
         var code = '("String contents")';
         var ast = utils_1.generateAst(code, 'javascript');
         var cursorLocation = 5;
-        var enclosingString = utils_1.findEnclosingString(ast, cursorLocation);
+        var enclosingString = utils_1.findEnclosingStringNode(ast, cursorLocation);
         if (enclosingString) {
             expect(enclosingString.start).toBe(1);
         }
