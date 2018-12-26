@@ -1,7 +1,8 @@
-//notes: maybe create a mock of 'vscode' to workaround the error where it cant
-//find 'vscode' module
 
-const { findEnclosingString, generateAst } = require('../utils');
+
+//todo: i shouldn't need to point to "out" to get the module--figure out how to
+//make it work by just requiring "../utils"
+const { findEnclosingString, generateAst } = require('../../out/utils');
 
 describe('Tbx', () => {
     it('should true', () => {
