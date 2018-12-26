@@ -108,13 +108,16 @@ function isCursorInsideNode(cursorLocation: number, node: Node) {
     );
 }
 
-export function findEnclosingString(ast: Node, cursorLocation: number) {
-    const allEnclosingStrings = filterAst(
-        ast,
-        (node: Node) =>
-            isStringLiteral(node) && isCursorInsideNode(cursorLocation, node)
-    );
-    return allEnclosingStrings[0];
+export function findEnclosingString(ast: Node | null, cursorLocation: number) {
+    if (ast) {
+        const allEnclosingStrings = filterAst(
+            ast,
+            (node: Node) =>
+                isStringLiteral(node) &&
+                isCursorInsideNode(cursorLocation, node)
+        );
+        return allEnclosingStrings[0];
+    }
 }
 
 export function setCursor(editor: TextEditor, offset: number) {

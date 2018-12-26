@@ -90,10 +90,13 @@ function isCursorInsideNode(cursorLocation, node) {
         cursorLocation < node.end);
 }
 function findEnclosingString(ast, cursorLocation) {
-    var allEnclosingStrings = filterAst(ast, function (node) {
-        return types_1.isStringLiteral(node) && isCursorInsideNode(cursorLocation, node);
-    });
-    return allEnclosingStrings[0];
+    if (ast) {
+        var allEnclosingStrings = filterAst(ast, function (node) {
+            return types_1.isStringLiteral(node) &&
+                isCursorInsideNode(cursorLocation, node);
+        });
+        return allEnclosingStrings[0];
+    }
 }
 exports.findEnclosingString = findEnclosingString;
 function setCursor(editor, offset) {

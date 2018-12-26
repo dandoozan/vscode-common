@@ -1,8 +1,4 @@
-
-
-//todo: i shouldn't need to point to "out" to get the module--figure out how to
-//make it work by just requiring "../utils"
-const { findEnclosingString, generateAst } = require('../../out/utils');
+import { generateAst, findEnclosingString } from "../utils";
 
 describe('Tbx', () => {
     it('should true', () => {
@@ -17,6 +13,10 @@ describe('findEnclosingString', () => {
         const cursorLocation = 5;
         const enclosingString = findEnclosingString(ast, cursorLocation);
 
-        expect(enclosingString.start).toBe(1);
+        if (enclosingString) {
+            expect(enclosingString.start).toBe(1);
+        } else {
+            fail(`enclosingString should return an object. It returned: ${enclosingString}`);
+        }
     });
 });
