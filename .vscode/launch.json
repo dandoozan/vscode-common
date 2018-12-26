@@ -14,9 +14,8 @@
                 "--colors",
             ],
             "cwd": "${workspaceFolder}",
-            // "console": "integratedTerminal",
-            // "internalConsoleOptions": "neverOpen",
-            // "sourceMaps": true,
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
             "preLaunchTask": "npm: watch"
         }
     ]
