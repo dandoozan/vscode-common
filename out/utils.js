@@ -37,8 +37,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var vscode_1 = require("vscode");
 var parser_1 = require("@babel/parser");
-var types_1 = require("@babel/types");
 var lodash_1 = require("lodash");
+/* vscode stuff */
 function addCommand(name, fn, context) {
     var toggleAsyncCommand = vscode_1.commands.registerCommand(name, fn);
     context.subscriptions.push(toggleAsyncCommand);
@@ -65,6 +65,53 @@ function getLanguage(editor) {
     return editor.document.languageId;
 }
 exports.getLanguage = getLanguage;
+function getRangeFromBoundary(document, boundary) {
+    return new vscode_1.Range(document.positionAt(boundary.start), document.positionAt(boundary.end));
+}
+exports.getRangeFromBoundary = getRangeFromBoundary;
+function deleteBetweenBoundary(editor, boundary) {
+    return __awaiter(this, void 0, void 0, function () {
+        var range_1;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!boundary) return [3 /*break*/, 2];
+                    range_1 = getRangeFromBoundary(editor.document, boundary);
+                    return [4 /*yield*/, editor.edit(function (editBuilder) {
+                            editBuilder.delete(range_1);
+                        })];
+                case 1:
+                    _a.sent();
+                    _a.label = 2;
+                case 2: return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.deleteBetweenBoundary = deleteBetweenBoundary;
+function setCursor(editor, offset) {
+    var pos = editor.document.positionAt(offset);
+    editor.selection = new vscode_1.Selection(pos, pos);
+}
+exports.setCursor = setCursor;
+function notify(msg) {
+    vscode_1.window.showInformationMessage('' + msg);
+}
+exports.notify = notify;
+function getWordAtPosition(editor, position) {
+    if (editor && position) {
+        var range = editor.document.getWordRangeAtPosition(position);
+        //range will be undefined when there is no word at the position (ie.
+        //it's whitespace or on a semicolon, bracket, etc)
+        if (range) {
+            return editor.document.getText(range);
+        }
+        //if I don't find a word at the position, return empty string
+        return '';
+    }
+}
+exports.getWordAtPosition = getWordAtPosition;
+/* AST stuff */
 function generateAst(code, language) {
     //use try-catch b/c babel will throw an error if it can't parse the file
     //(ie. if it runs into a "SyntaxError" or something that it can't handle)
@@ -94,102 +141,61 @@ function generateAst(code, language) {
 exports.generateAst = generateAst;
 function filterAst(astNode, fnToApplyToEveryNode) {
     var filteredNodes = [];
-    //if the current child is an array, just call filterAst on all
-    //it's elements
-    if (lodash_1.isArray(astNode)) {
-        //call filterAst on all children
-        for (var _i = 0, astNode_1 = astNode; _i < astNode_1.length; _i++) {
-            var item = astNode_1[_i];
-            filteredNodes = filteredNodes.concat(filterAst(item, fnToApplyToEveryNode));
+    if (astNode) {
+        //if the current child is an array, just call filterAst on all
+        //it's elements
+        if (lodash_1.isArray(astNode)) {
+            //call filterAst on all children
+            for (var _i = 0, astNode_1 = astNode; _i < astNode_1.length; _i++) {
+                var item = astNode_1[_i];
+                filteredNodes = filteredNodes.concat(filterAst(item, fnToApplyToEveryNode));
+            }
         }
-    }
-    else if (lodash_1.isObject(astNode)) {
-        //apply the function to this node
-        if (fnToApplyToEveryNode(astNode)) {
-            //if it returns truthy, add this node to filteredNodes
-            filteredNodes.push(astNode);
-        }
-        //then call filterAst on all children
-        for (var key in astNode) {
-            if (astNode.hasOwnProperty(key)) {
-                filteredNodes = filteredNodes.concat(filterAst(astNode[key], fnToApplyToEveryNode));
+        else if (lodash_1.isObject(astNode)) {
+            //apply the function to this node
+            if (fnToApplyToEveryNode(astNode)) {
+                //if it returns truthy, add this node to filteredNodes
+                filteredNodes.push(astNode);
+            }
+            //then call filterAst on all children
+            for (var key in astNode) {
+                if (astNode.hasOwnProperty(key)) {
+                    filteredNodes = filteredNodes.concat(filterAst(astNode[key], fnToApplyToEveryNode));
+                }
             }
         }
     }
     return filteredNodes;
 }
+exports.filterAst = filterAst;
 function isCursorInsideNode(cursorLocation, node) {
     return (lodash_1.isNumber(node.start) &&
         lodash_1.isNumber(node.end) &&
         node.start < cursorLocation &&
         cursorLocation < node.end);
 }
+exports.isCursorInsideNode = isCursorInsideNode;
 function isCursorTouchingNode(cursorLocation, node) {
     return (lodash_1.isNumber(node.start) &&
         lodash_1.isNumber(node.end) &&
         node.start <= cursorLocation &&
         cursorLocation <= node.end);
 }
-function findEnclosingStringNode(ast, cursorLocation) {
-    if (ast) {
-        var allEnclosingStrings = filterAst(ast, function (node) {
-            return (types_1.isStringLiteral(node) || types_1.isTemplateLiteral(node)) &&
-                isCursorInsideNode(cursorLocation, node);
-        });
-        return allEnclosingStrings[0];
-    }
-}
-exports.findEnclosingStringNode = findEnclosingStringNode;
-function getNodeBoundaries(node) {
+exports.isCursorTouchingNode = isCursorTouchingNode;
+function getBoundary(node) {
     if (node && lodash_1.isNumber(node.start) && lodash_1.isNumber(node.end)) {
         return { start: node.start, end: node.end };
     }
 }
-exports.getNodeBoundaries = getNodeBoundaries;
-function getRangeFromOffsets(document, start, end) {
-    return new vscode_1.Range(document.positionAt(start), document.positionAt(end));
-}
-exports.getRangeFromOffsets = getRangeFromOffsets;
-function deleteBetween(editor, start, end) {
-    return __awaiter(this, void 0, void 0, function () {
-        var range_1;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    if (!(lodash_1.isNumber(start) && lodash_1.isNumber(end))) return [3 /*break*/, 2];
-                    range_1 = getRangeFromOffsets(editor.document, start, end);
-                    return [4 /*yield*/, editor.edit(function (editBuilder) {
-                            editBuilder.delete(range_1);
-                        })];
-                case 1:
-                    _a.sent();
-                    _a.label = 2;
-                case 2: return [2 /*return*/];
-            }
-        });
-    });
-}
-exports.deleteBetween = deleteBetween;
-function setCursor(editor, offset) {
-    var pos = editor.document.positionAt(offset);
-    editor.selection = new vscode_1.Selection(pos, pos);
-}
-exports.setCursor = setCursor;
-function notify(msg) {
-    vscode_1.window.showInformationMessage('' + msg);
-}
-exports.notify = notify;
-function getWordAtPosition(editor, position) {
-    if (editor && position) {
-        var range = editor.document.getWordRangeAtPosition(position);
-        //range will be undefined when there is no word at the position (ie.
-        //it's whitespace or on a semicolon, bracket, etc)
-        if (range) {
-            return editor.document.getText(range);
-        }
-        //if I don't find a word at the position, return empty string
-        return '';
+exports.getBoundary = getBoundary;
+function getInnerBoundary(stringNode) {
+    var nodeBoundaries = getBoundary(stringNode);
+    if (nodeBoundaries) {
+        return {
+            start: nodeBoundaries.start + 1,
+            end: nodeBoundaries.end - 1,
+        };
     }
 }
-exports.getWordAtPosition = getWordAtPosition;
+exports.getInnerBoundary = getInnerBoundary;
 //# sourceMappingURL=utils.js.map
