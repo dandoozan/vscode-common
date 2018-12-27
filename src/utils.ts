@@ -60,9 +60,8 @@ export function getRangeFromBoundary(
 
 export async function deleteBetweenBoundary(editor: TextEditor, boundary: Boundary) {
     if (boundary) {
-        const range = getRangeFromBoundary(editor.document, boundary);
         await editor.edit(editBuilder => {
-            editBuilder.delete(range);
+            editBuilder.delete(getRangeFromBoundary(editor.document, boundary));
         });
     }
 }
@@ -159,6 +158,11 @@ export function filterAst(
     return filteredNodes;
 }
 
+export function isString(node: Node) {
+    return isStringLiteral(node) || isTemplateLiteral(node);
+}
+
+
 export function isCursorInsideNode(cursorLocation: number, node: Node) {
     return (
         isNumber(node.start) &&
@@ -182,7 +186,7 @@ export function getBoundary(node: Node | undefined) {
     }
 }
 
-export function getInnerBoundary(stringNode: Node | undefined) {
+export function getBoundaryExcludingBraces(stringNode: Node | undefined) {
     const nodeBoundaries = getBoundary(stringNode);
     if (nodeBoundaries) {
         return {

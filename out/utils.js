@@ -37,6 +37,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var vscode_1 = require("vscode");
 var parser_1 = require("@babel/parser");
+var types_1 = require("@babel/types");
 var lodash_1 = require("lodash");
 /* vscode stuff */
 function addCommand(name, fn, context) {
@@ -71,14 +72,12 @@ function getRangeFromBoundary(document, boundary) {
 exports.getRangeFromBoundary = getRangeFromBoundary;
 function deleteBetweenBoundary(editor, boundary) {
     return __awaiter(this, void 0, void 0, function () {
-        var range_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     if (!boundary) return [3 /*break*/, 2];
-                    range_1 = getRangeFromBoundary(editor.document, boundary);
                     return [4 /*yield*/, editor.edit(function (editBuilder) {
-                            editBuilder.delete(range_1);
+                            editBuilder.delete(getRangeFromBoundary(editor.document, boundary));
                         })];
                 case 1:
                     _a.sent();
@@ -168,6 +167,10 @@ function filterAst(astNode, fnToApplyToEveryNode) {
     return filteredNodes;
 }
 exports.filterAst = filterAst;
+function isString(node) {
+    return types_1.isStringLiteral(node) || types_1.isTemplateLiteral(node);
+}
+exports.isString = isString;
 function isCursorInsideNode(cursorLocation, node) {
     return (lodash_1.isNumber(node.start) &&
         lodash_1.isNumber(node.end) &&
@@ -188,7 +191,7 @@ function getBoundary(node) {
     }
 }
 exports.getBoundary = getBoundary;
-function getInnerBoundary(stringNode) {
+function getBoundaryExcludingBraces(stringNode) {
     var nodeBoundaries = getBoundary(stringNode);
     if (nodeBoundaries) {
         return {
@@ -197,5 +200,5 @@ function getInnerBoundary(stringNode) {
         };
     }
 }
-exports.getInnerBoundary = getInnerBoundary;
+exports.getBoundaryExcludingBraces = getBoundaryExcludingBraces;
 //# sourceMappingURL=utils.js.map
