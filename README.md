@@ -1,4 +1,13 @@
-# VscodeKeyboardShortcuts
+# CommonVSCodeExtensions
+
+## Criteria to know what to include in utils
+-   Include it if:
+    -   It will likely be needed in multiple projects (always err on the side of
+        not including it here (and keeping it local in the original project)
+        because if I do need it in the future, I can always extract the function
+        out of the original project into utils (it's harder to go vice versa)).
+        
+
 
 ## A note on testing
 
