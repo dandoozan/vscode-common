@@ -58,7 +58,10 @@ export function getRangeFromBoundary(
     );
 }
 
-export async function deleteBetweenBoundary(editor: TextEditor, boundary: Boundary) {
+export async function deleteBetweenBoundary(
+    editor: TextEditor,
+    boundary: Boundary
+) {
     if (boundary) {
         await editor.edit(editBuilder => {
             editBuilder.delete(getRangeFromBoundary(editor.document, boundary));
@@ -94,6 +97,13 @@ export function getWordAtPosition(
 }
 
 /* AST stuff */
+function isTypescript(language: string) {
+    //possible typescript languages:
+    //  -"typescript"
+    //  -"typescriptreact"
+    return language.includes('typescript');
+}
+
 export function generateAst(code: string, language: string) {
     //use try-catch b/c babel will throw an error if it can't parse the file
     //(ie. if it runs into a "SyntaxError" or something that it can't handle)
@@ -111,7 +121,7 @@ export function generateAst(code: string, language: string) {
         };
 
         //add "typescript" plugin if language is typescript
-        if (language === 'typescript') {
+        if (isTypescript(language)) {
             parserOptions.plugins = ['typescript'];
         }
 
@@ -161,7 +171,6 @@ export function filterAst(
 export function isString(node: Node) {
     return isStringLiteral(node) || isTemplateLiteral(node);
 }
-
 
 export function isCursorInsideNode(cursorLocation: number, node: Node) {
     return (
