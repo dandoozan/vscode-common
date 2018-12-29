@@ -36,8 +36,11 @@ export function getCurrentEditor() {
     return window.activeTextEditor;
 }
 
-export function getCursorLocation(editor: TextEditor) {
+export function getCursor(editor: TextEditor) {
     return editor.document.offsetAt(editor.selection.active);
+}
+export function getCursors(editor: TextEditor) {
+    return editor.selections.map((selection) => editor.document.offsetAt(selection.active))
 }
 
 export function getTextOfFile(editor: TextEditor) {
@@ -69,9 +72,25 @@ export async function deleteBetweenBoundary(
     }
 }
 
-export function setCursor(editor: TextEditor, offset: number) {
-    const pos = editor.document.positionAt(offset);
-    editor.selection = new Selection(pos, pos);
+async function updateEditor(editor: TextEditor) {
+    //I don't know of another way to update the editor without "editing" it,
+    //so I'm just inserting an empty string at the beginning (ie. not changing
+    //anything)
+    await editor.edit((editBuilder) => {
+        editBuilder.insert(editor.document.positionAt(0), '')
+    });
+}
+
+export async function setCursor(editor: TextEditor, offset: number) {
+    await setCursors(editor, [offset]);
+}
+
+export async function setCursors(editor: TextEditor, offsets: number[]) {
+    editor.selections = offsets.map((offset) => {
+        const pos = editor.document.positionAt(offset);
+        return new Selection(pos, pos);
+    });
+    await updateEditor(editor);
 }
 
 export function notify(msg: any) {
