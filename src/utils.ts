@@ -16,12 +16,7 @@ import {
     isTemplateLiteral,
     isDirective,
 } from '@babel/types';
-import { isArray, isObject, isNumber, merge } from 'lodash';
-
-export interface VksNode {
-    vksType: string;
-    [propName: string]: any;
-}
+import { isArray, isObject, isNumber } from 'lodash';
 
 export interface Boundary {
     start: number;
@@ -237,99 +232,40 @@ export async function copy() {
 }
 
 /* AST stuff */
-function isJavaScript(language: string) {
-    //possible javascript languages:
-    //  -"javascript"
-    //  -"javascriptreact"
-    return language.startsWith('javascript');
-}
-function isTypeScript(language: string) {
+function isTypescript(language: string) {
     //possible typescript languages:
     //  -"typescript"
     //  -"typescriptreact"
-    return language.startsWith('typescript');
-}
-
-function isJson(language: string) {
-    //possible json languages:
-    //  -"json"
-    //  -"jsonc"
-    return language.startsWith('json');
+    return language.includes('typescript');
 }
 
 export function generateAst(code: string, language: string) {
-    let ast: Node | null = null;
-    if (isJson(language)) {
-        ast = parseJsonAst(code);
-    } else if (isJavaScript(language)) {
-        ast = parseJavaScriptAst(code);
-    } else if (isTypeScript(language)) {
-        ast = parseTypeScriptAst(code);
-    }
-    return ast;
-}
-
-function parseTypeScriptAst(code: string) {
-    return parseJavaScriptAst(code, { plugins: ['typescript'] });
-}
-
-function parseJavaScriptAst(code: string, parserOptions: ParserOptions = {}) {
-    parserOptions = merge({
-        sourceType: 'unambiguous', //auto-detect "script" files vs "module" files
-
-        //make the parser as lenient as possible
-        allowImportExportEverywhere: true,
-        allowAwaitOutsideFunction: true,
-        allowReturnOutsideFunction: true,
-        allowSuperOutsideMethod: true,
-    }, parserOptions);
-
     //use try-catch b/c babel will throw an error if it can't parse the file
     //(ie. if it runs into a "SyntaxError" or something that it can't handle)
     //In this case, display a notification that an error occurred so that the
     //user knows why the command didn't work
     try {
-        // return parse(code, parserOptions)
-        const ast = parse(code, parserOptions);
+        const parserOptions: ParserOptions = {
+            sourceType: 'unambiguous', //auto-detect "script" files vs "module" files
 
-        //augment the ast nodes with my type
-        const augmentedAst = mapAst(ast, (node: VksNode) => {
-            if (isAstNodeString(node)) {
-                node.vksType = 'string';
-            }
-            return node;
-        });
+            //make the parser as lenient as possible
+            allowImportExportEverywhere: true,
+            allowAwaitOutsideFunction: true,
+            allowReturnOutsideFunction: true,
+            allowSuperOutsideMethod: true,
+        };
 
-        return augmentedAst;
+        //add "typescript" plugin if language is typescript
+        if (isTypescript(language)) {
+            parserOptions.plugins = ['typescript'];
+        }
+
+        return parse(code, parserOptions);
     } catch (e) {
         // console.log('​e=', e);
         //do nothing, it will just return null below
     }
     return null;
-}
-
-export function mapAst(astNode: Node | null, mapFn: Function) {
-    if (astNode) {
-        //if the current child is an array, just call mapAst on all
-        //it's elements
-        if (isArray(astNode)) {
-            //call mapAst on all children
-            for (const item of astNode) {
-                astNode[item] = mapAst(item, mapFn);
-            }
-        } else if (isObject(astNode)) {
-            //apply the function to this node
-            astNode = mapFn(astNode);
-
-            //then call mapAst on all children
-            for (const key in astNode) {
-                if (astNode.hasOwnProperty(key)) {
-                    astNode[key] = mapAst(astNode[key], mapFn);
-                }
-            }
-        }
-    }
-    return astNode;
 }
 
 export function filterAst(
@@ -368,13 +304,13 @@ export function filterAst(
     return filteredNodes;
 }
 
-export function isAstNodeString(node: VksNode) {
+export function isString(node: Node) {
     return (
         isStringLiteral(node) || isTemplateLiteral(node) || isDirective(node)
     );
 }
 
-export function isCursorInsideNode(cursorLocation: number, node: VksNode) {
+export function isCursorInsideNode(cursorLocation: number, node: Node) {
     return (
         isNumber(node.start) &&
         isNumber(node.end) &&
