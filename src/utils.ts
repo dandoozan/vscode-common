@@ -11,10 +11,11 @@ import {
 } from 'vscode';
 import { parse, ParserOptions } from '@babel/parser';
 import {
-    Node,
-    isStringLiteral,
-    isTemplateLiteral,
-    isDirective,
+    Node as BabelNode,
+    isStringLiteral as isBabelStringLiteral,
+    isTemplateLiteral as isBabelTemplateLiteral,
+    isDirective as isBabelDirective,
+    traverse,
 } from '@babel/types';
 import { isArray, isObject, isNumber } from 'lodash';
 
@@ -30,6 +31,12 @@ export interface Boundary {
 export interface Modification {
     method: 'insert' | 'delete';
     params: any[];
+}
+
+export interface Node {
+    type: string;
+    start: number;
+    end: number;
 }
 
 /* vscode stuff */
@@ -232,14 +239,88 @@ export async function copy() {
 }
 
 /* AST stuff */
-function isTypescript(language: string) {
+function isJavaScript(language: string) {
+    //possible javascript languages:
+    //  -"javascript"
+    //  -"javascriptreact"
+    return language.startsWith('javascript');
+}
+function isTypeScript(language: string) {
     //possible typescript languages:
     //  -"typescript"
     //  -"typescriptreact"
-    return language.includes('typescript');
+    return language.startsWith('typescript');
+}
+function isJson(language: string) {
+    //possible json languages:
+    //  -"json"
+    //  -"jsonc"
+    return language.startsWith('json');
 }
 
-export function generateAst(code: string, language: string) {
+function createNode(type: string, start: number, end: number) {
+    return { type, start, end };
+}
+
+function createStringNode(start: number, end: number) {
+    return createNode('string', start, end);
+}
+export function isString(node: Node) {
+    return node.type === 'string';
+}
+
+function traverseBabelAst(babelAst: BabelNode, fnToApplyToEveryNode: Function) {
+    traverse(babelAst, {
+        enter(babelNode) {
+            fnToApplyToEveryNode(babelNode);
+        },
+    });
+}
+
+function parseJavaScriptCode(code: string, isTypeScript: boolean = false) {
+    const nodes: Node[] = [];
+
+    //generate an ast from the code
+    const ast = generateBabelAst(code, isTypeScript);
+    if (ast) {
+        //traverse the ast, making a Node for each babelNode along the way
+        traverseBabelAst(ast, (babelNode: BabelNode) => {
+            if (isNumber(babelNode.start) && isNumber(babelNode.end)) {
+                if (isBabelNodeAString(babelNode)) {
+                    nodes.push(
+                        createStringNode(babelNode.start, babelNode.end)
+                    );
+                } else {
+                    nodes.push(
+                        createNode(
+                            babelNode.type,
+                            babelNode.start,
+                            babelNode.end
+                        )
+                    );
+                }
+            }
+        })
+    }
+
+    return nodes;
+}
+
+function parseTypeScriptCode(code: string) {
+    return parseJavaScriptCode(code, true);
+}
+
+export function parseCode(code: string, language: string) {
+    if (isJavaScript(language)) {
+        return parseJavaScriptCode(code);
+    } else if (isTypeScript(language)) {
+        return parseTypeScriptCode(code);
+    } else if (isJson(language)) {
+    //     return parseJsonCode(code);
+    }
+}
+
+export function generateBabelAst(code: string, isTypeScript: boolean = false) {
     //use try-catch b/c babel will throw an error if it can't parse the file
     //(ie. if it runs into a "SyntaxError" or something that it can't handle)
     //In this case, display a notification that an error occurred so that the
@@ -256,7 +337,7 @@ export function generateAst(code: string, language: string) {
         };
 
         //add "typescript" plugin if language is typescript
-        if (isTypescript(language)) {
+        if (isTypeScript) {
             parserOptions.plugins = ['typescript'];
         }
 
@@ -269,11 +350,11 @@ export function generateAst(code: string, language: string) {
 }
 
 export function filterAst(
-    astNode: Node | null,
+    astNode: BabelNode | null,
     cursor: number,
     fnToApplyToEveryNode: Function
 ) {
-    let filteredNodes: Node[] = [];
+    let filteredNodes: BabelNode[] = [];
 
     if (astNode) {
         //if the current child is an array, just call filterAst on all
@@ -304,9 +385,11 @@ export function filterAst(
     return filteredNodes;
 }
 
-export function isString(node: Node) {
+export function isBabelNodeAString(node: BabelNode) {
     return (
-        isStringLiteral(node) || isTemplateLiteral(node) || isDirective(node)
+        isBabelStringLiteral(node) ||
+        isBabelTemplateLiteral(node) ||
+        isBabelDirective(node)
     );
 }
 
@@ -318,7 +401,7 @@ export function isCursorInsideNode(cursorLocation: number, node: Node) {
         cursorLocation < node.end
     );
 }
-export function isCursorTouchingNode(cursorLocation: number, node: Node) {
+export function isCursorTouchingNode(cursorLocation: number, node: BabelNode) {
     return (
         isNumber(node.start) &&
         isNumber(node.end) &&
