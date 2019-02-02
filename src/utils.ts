@@ -9,7 +9,10 @@ import {
     TextDocument,
     TextEditorEdit,
 } from 'vscode';
-import { parse, ParserOptions } from '@babel/parser';
+import {
+    parse as babelParse,
+    ParserOptions as BabelParserOptions,
+} from '@babel/parser';
 import {
     Node as BabelNode,
     isStringLiteral as isBabelStringLiteral,
@@ -17,7 +20,7 @@ import {
     isDirective as isBabelDirective,
     traverse,
 } from '@babel/types';
-import { isArray, isObject, isNumber } from 'lodash';
+import { isArray, isObject, isNumber, isString, get } from 'lodash';
 
 export interface Boundary {
     start: number;
@@ -265,7 +268,7 @@ function createNode(type: string, start: number, end: number) {
 function createStringNode(start: number, end: number) {
     return createNode('string', start, end);
 }
-export function isString(node: Node) {
+export function isStringNode(node: Node) {
     return node.type === 'string';
 }
 
@@ -275,6 +278,29 @@ function traverseBabelAst(babelAst: BabelNode, fnToApplyToEveryNode: Function) {
             fnToApplyToEveryNode(babelNode);
         },
     });
+}
+
+function traverseJsonAst(jsonAstNode, fnToApplyToEveryNode: Function) {
+    if (jsonAstNode) {
+        //if the current child is an array, just call traverse on all
+        //it's elements
+        if (isArray(jsonAstNode)) {
+            //call traverse on all children
+            for (const item of jsonAstNode) {
+                traverseJsonAst(item, fnToApplyToEveryNode);
+            }
+        } else if (isObject(jsonAstNode)) {
+            //apply the function to this node
+            fnToApplyToEveryNode(jsonAstNode);
+
+            //then call traverse on all children
+            for (const key in jsonAstNode) {
+                if (jsonAstNode.hasOwnProperty(key)) {
+                    traverseJsonAst(jsonAstNode[key], fnToApplyToEveryNode);
+                }
+            }
+        }
+    }
 }
 
 function parseJavaScriptCode(code: string, isTypeScript: boolean = false) {
@@ -300,7 +326,7 @@ function parseJavaScriptCode(code: string, isTypeScript: boolean = false) {
                     );
                 }
             }
-        })
+        });
     }
 
     return nodes;
@@ -310,14 +336,38 @@ function parseTypeScriptCode(code: string) {
     return parseJavaScriptCode(code, true);
 }
 
+function parseJsonCode(code: string) {
+    const nodes: Node[] = [];
+
+    const jsonAst = generateJsonAst(code);
+    if (jsonAst) {
+        traverseJsonAst(jsonAst, jsonNode => {
+            const start = get(jsonNode, 'loc.start.offset');
+            const end = get(jsonNode, 'loc.end.offset');
+            if (isJsonNodeAString(jsonNode)) {
+                nodes.push(createStringNode(start, end));
+            } else {
+                nodes.push(createNode(jsonNode.type, start, end));
+            }
+        });
+    }
+
+    return nodes;
+}
+
 export function parseCode(code: string, language: string) {
     if (isJavaScript(language)) {
         return parseJavaScriptCode(code);
     } else if (isTypeScript(language)) {
         return parseTypeScriptCode(code);
     } else if (isJson(language)) {
-    //     return parseJsonCode(code);
+        return parseJsonCode(code);
     }
+}
+
+function generateJsonAst(code: string) {
+    const jsonParse = require('json-to-ast');
+    return jsonParse(code);
 }
 
 export function generateBabelAst(code: string, isTypeScript: boolean = false) {
@@ -326,7 +376,7 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
     //In this case, display a notification that an error occurred so that the
     //user knows why the command didn't work
     try {
-        const parserOptions: ParserOptions = {
+        const parserOptions: BabelParserOptions = {
             sourceType: 'unambiguous', //auto-detect "script" files vs "module" files
 
             //make the parser as lenient as possible
@@ -341,7 +391,7 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
             parserOptions.plugins = ['typescript'];
         }
 
-        return parse(code, parserOptions);
+        return babelParse(code, parserOptions);
     } catch (e) {
         // console.log('​e=', e);
         //do nothing, it will just return null below
@@ -349,7 +399,7 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
     return null;
 }
 
-export function filterAst(
+export function filterBabelAst(
     astNode: BabelNode | null,
     cursor: number,
     fnToApplyToEveryNode: Function
@@ -363,7 +413,7 @@ export function filterAst(
             //call filterAst on all children
             for (const item of astNode) {
                 filteredNodes = filteredNodes.concat(
-                    filterAst(item, cursor, fnToApplyToEveryNode)
+                    filterBabelAst(item, cursor, fnToApplyToEveryNode)
                 );
             }
         } else if (isObject(astNode)) {
@@ -376,7 +426,11 @@ export function filterAst(
             for (const key in astNode) {
                 if (astNode.hasOwnProperty(key)) {
                     filteredNodes = filteredNodes.concat(
-                        filterAst(astNode[key], cursor, fnToApplyToEveryNode)
+                        filterBabelAst(
+                            astNode[key],
+                            cursor,
+                            fnToApplyToEveryNode
+                        )
                     );
                 }
             }
@@ -390,6 +444,13 @@ export function isBabelNodeAString(node: BabelNode) {
         isBabelStringLiteral(node) ||
         isBabelTemplateLiteral(node) ||
         isBabelDirective(node)
+    );
+}
+
+function isJsonNodeAString(node) {
+    return (
+        node.type === 'Identifier' ||
+        (node.type === 'Literal' && isString(node.value))
     );
 }
 
