@@ -19,6 +19,8 @@ import {
     isTemplateLiteral as isBabelTemplateLiteral,
     isDirective as isBabelDirective,
     traverse,
+    isBlockStatement as isBabelBlockStatement,
+    isObjectExpression as isBabelObjectExpression,
 } from '@babel/types';
 import { isArray, isObject, isNumber, isString, get } from 'lodash';
 
@@ -268,8 +270,15 @@ function createNode(type: string, start: number, end: number) {
 function createStringNode(start: number, end: number) {
     return createNode('string', start, end);
 }
+function createBlockNode(start: number, end: number) {
+    return createNode('block', start, end);
+}
 export function isStringNode(node: Node) {
     return node.type === 'string';
+}
+
+export function isBlockNode(node: Node) {
+    return node.type === 'block';
 }
 
 function traverseBabelAst(babelAst: BabelNode, fnToApplyToEveryNode: Function) {
@@ -316,6 +325,8 @@ function parseJavaScriptCode(code: string, isTypeScript: boolean = false) {
                     nodes.push(
                         createStringNode(babelNode.start, babelNode.end)
                     );
+                } else if (isBabelNodeABlock(babelNode)) {
+                    nodes.push(createBlockNode(babelNode.start, babelNode.end));
                 } else {
                     nodes.push(
                         createNode(
@@ -445,6 +456,9 @@ export function isBabelNodeAString(node: BabelNode) {
         isBabelTemplateLiteral(node) ||
         isBabelDirective(node)
     );
+}
+export function isBabelNodeABlock(node: BabelNode) {
+    return isBabelBlockStatement(node) || isBabelObjectExpression(node);
 }
 
 function isJsonNodeAString(node) {
