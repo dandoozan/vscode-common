@@ -208,7 +208,7 @@ export async function setCursor(
 }
 
 export function notify(msg: any) {
-    window.showInformationMessage('' + msg);
+    window.showInformationMessage(`${getExtensionName()}: ${msg}`);
 }
 
 export function getWordAtPosition(
@@ -244,23 +244,14 @@ export async function copy() {
 }
 
 /* AST stuff */
-function isJavaScript(language: string) {
-    //possible javascript languages:
-    //  -"javascript"
-    //  -"javascriptreact"
-    return language.startsWith('javascript');
+export function isJavaScript(language: string) {
+    return language === 'javascript';
 }
-function isTypeScript(language: string) {
-    //possible typescript languages:
-    //  -"typescript"
-    //  -"typescriptreact"
-    return language.startsWith('typescript');
+export function isTypeScript(language: string) {
+    return language === 'typescript';
 }
-function isJson(language: string) {
-    //possible json languages:
-    //  -"json"
-    //  -"jsonc"
-    return language.startsWith('json');
+export function isJson(language: string) {
+    return language === 'json';
 }
 
 function createNode(type: string, start: number, end: number) {
@@ -338,6 +329,8 @@ function parseJavaScriptCode(code: string, isTypeScript: boolean = false) {
                 }
             }
         });
+    } else {
+        //failed to generate ast
     }
 
     return nodes;
@@ -367,12 +360,22 @@ function parseJsonCode(code: string) {
 }
 
 export function parseCode(code: string, language: string) {
-    if (isJavaScript(language)) {
-        return parseJavaScriptCode(code);
-    } else if (isTypeScript(language)) {
-        return parseTypeScriptCode(code);
-    } else if (isJson(language)) {
-        return parseJsonCode(code);
+    try {
+        if (isJavaScript(language)) {
+            return parseJavaScriptCode(code);
+        } else if (isTypeScript(language)) {
+            return parseTypeScriptCode(code);
+        } else if (isJson(language)) {
+            return parseJsonCode(code);
+        } else {
+            //language is not supported
+            notify(`The language "${language}" is not supported at this time`);
+        }
+    } catch (err) {
+        //failed to parse the file; notify the user
+        notify(
+            `Failed to parse the file.  Please fix any errors in the file and try again.`
+        );
     }
 }
 
@@ -381,33 +384,27 @@ function generateJsonAst(code: string) {
     return jsonParse(code);
 }
 
-export function generateBabelAst(code: string, isTypeScript: boolean = false) {
+function generateBabelAst(code: string, isTypeScript: boolean = false) {
     //use try-catch b/c babel will throw an error if it can't parse the file
     //(ie. if it runs into a "SyntaxError" or something that it can't handle)
     //In this case, display a notification that an error occurred so that the
     //user knows why the command didn't work
-    try {
-        const parserOptions: BabelParserOptions = {
-            sourceType: 'unambiguous', //auto-detect "script" files vs "module" files
+    const parserOptions: BabelParserOptions = {
+        sourceType: 'unambiguous', //auto-detect "script" files vs "module" files
 
-            //make the parser as lenient as possible
-            allowImportExportEverywhere: true,
-            allowAwaitOutsideFunction: true,
-            allowReturnOutsideFunction: true,
-            allowSuperOutsideMethod: true,
-        };
+        //make the parser as lenient as possible
+        allowImportExportEverywhere: true,
+        allowAwaitOutsideFunction: true,
+        allowReturnOutsideFunction: true,
+        allowSuperOutsideMethod: true,
+    };
 
-        //add "typescript" plugin if language is typescript
-        if (isTypeScript) {
-            parserOptions.plugins = ['typescript'];
-        }
-
-        return babelParse(code, parserOptions);
-    } catch (e) {
-        // console.log('​e=', e);
-        //do nothing, it will just return null below
+    //add "typescript" plugin if language is typescript
+    if (isTypeScript) {
+        parserOptions.plugins = ['typescript'];
     }
-    return null;
+
+    return babelParse(code, parserOptions);
 }
 
 export function filterBabelAst(
