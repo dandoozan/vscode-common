@@ -23,6 +23,8 @@ import {
     isObjectExpression as isBabelObjectExpression,
 } from '@babel/types';
 import { isArray, isObject, isNumber, isString, get } from 'lodash';
+import Node from './Node';
+import NodeFactory from './NodeFactory';
 
 export interface Boundary {
     start: number;
@@ -36,12 +38,6 @@ export interface Boundary {
 export interface Modification {
     method: 'insert' | 'delete';
     params: any[];
-}
-
-export interface Node {
-    type: string;
-    start: number;
-    end: number;
 }
 
 /* vscode stuff */
@@ -254,24 +250,6 @@ export function isJson(language: string) {
     return language === 'json';
 }
 
-function createNode(type: string, start: number, end: number) {
-    return { type, start, end };
-}
-
-function createStringNode(start: number, end: number) {
-    return createNode('string', start, end);
-}
-function createBlockNode(start: number, end: number) {
-    return createNode('block', start, end);
-}
-export function isStringNode(node: Node) {
-    return node.type === 'string';
-}
-
-export function isBlockNode(node: Node) {
-    return node.type === 'block';
-}
-
 function traverseBabelAst(babelAst: BabelNode, fnToApplyToEveryNode: Function) {
     traverse(babelAst, {
         enter(babelNode) {
@@ -313,19 +291,21 @@ function parseJavaScriptCode(code: string, isTypeScript: boolean = false) {
         traverseBabelAst(ast, (babelNode: BabelNode) => {
             if (isNumber(babelNode.start) && isNumber(babelNode.end)) {
                 if (isBabelNodeAString(babelNode)) {
-                    nodes.push(
-                        createStringNode(babelNode.start, babelNode.end)
-                    );
+                    const node = NodeFactory.createNode('string', {
+                        start: babelNode.start,
+                        end: babelNode.end,
+                    });
+                    if (node) {
+                        nodes.push(node);
+                    }
                 } else if (isBabelNodeABlock(babelNode)) {
-                    nodes.push(createBlockNode(babelNode.start, babelNode.end));
-                } else {
-                    nodes.push(
-                        createNode(
-                            babelNode.type,
-                            babelNode.start,
-                            babelNode.end
-                        )
-                    );
+                    const node = NodeFactory.createNode('block', {
+                        start: babelNode.start,
+                        end: babelNode.end,
+                    });
+                    if (node) {
+                        nodes.push(node);
+                    }
                 }
             }
         });
@@ -349,9 +329,10 @@ function parseJsonCode(code: string) {
             const start = get(jsonNode, 'loc.start.offset');
             const end = get(jsonNode, 'loc.end.offset');
             if (isJsonNodeAString(jsonNode)) {
-                nodes.push(createStringNode(start, end));
-            } else {
-                nodes.push(createNode(jsonNode.type, start, end));
+                const node = NodeFactory.createNode('string', { start, end });
+                if (node) {
+                    nodes.push(node);
+                }
             }
         });
     }
@@ -372,6 +353,7 @@ export function parseCode(code: string, language: string) {
             notify(`The language "${language}" is not supported at this time`);
         }
     } catch (err) {
+        console.log('​catch -> err=', err);
         //failed to parse the file; notify the user
         notify(
             `Failed to parse the file.  Please fix any errors in the file and try again.`
@@ -463,44 +445,4 @@ function isJsonNodeAString(node) {
         node.type === 'Identifier' ||
         (node.type === 'Literal' && isString(node.value))
     );
-}
-
-export function isCursorInsideNode(cursorLocation: number, node: Node) {
-    return (
-        isNumber(node.start) &&
-        isNumber(node.end) &&
-        node.start < cursorLocation &&
-        cursorLocation < node.end
-    );
-}
-export function isCursorTouchingNode(cursorLocation: number, node: BabelNode) {
-    return (
-        isNumber(node.start) &&
-        isNumber(node.end) &&
-        node.start <= cursorLocation &&
-        cursorLocation <= node.end
-    );
-}
-
-export function getBoundary(node: Node | undefined) {
-    if (node && isNumber(node.start) && isNumber(node.end)) {
-        return { start: node.start, end: node.end };
-    }
-}
-
-export function getBoundaryExcludingBraces(stringNode: Node | undefined) {
-    const nodeBoundaries = getBoundary(stringNode);
-    if (nodeBoundaries) {
-        return {
-            start: nodeBoundaries.start + 1,
-            end: nodeBoundaries.end - 1,
-        };
-    }
-}
-
-export function excludeBracesFromBoundary(boundary: Boundary) {
-    return {
-        start: boundary.start + 1,
-        end: boundary.end - 1,
-    };
 }
