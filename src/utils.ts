@@ -15,26 +15,11 @@ import {
 } from '@babel/parser';
 import {
     Node as BabelNode,
-    isStringLiteral as isBabelStringLiteral,
-    isTemplateLiteral as isBabelTemplateLiteral,
-    isDirective as isBabelDirective,
     traverse,
-    isBlockStatement as isBabelBlockStatement,
-    isObjectExpression as isBabelObjectExpression,
 } from '@babel/types';
 import { isArray, isObject, isNumber, isString, get } from 'lodash';
-import Node from './Node';
-import NodeFactory from './NodeFactory';
+import Boundary from './Boundary';
 
-export interface Boundary {
-    start: number;
-    end: number;
-}
-// export interface Modification {
-//     action: 'insert' | 'delete',
-//     location: number | Boundary,
-//     value?: string
-// }
 export interface Modification {
     method: 'insert' | 'delete';
     params: any[];
@@ -250,7 +235,7 @@ export function isJson(language: string) {
     return language === 'json';
 }
 
-function traverseBabelAst(babelAst: BabelNode, fnToApplyToEveryNode: Function) {
+export function traverseBabelAst(babelAst: BabelNode, fnToApplyToEveryNode: Function) {
     traverse(babelAst, {
         enter(babelNode) {
             fnToApplyToEveryNode(babelNode);
@@ -281,92 +266,60 @@ function traverseJsonAst(jsonAstNode, fnToApplyToEveryNode: Function) {
     }
 }
 
-function parseJavaScriptCode(code: string, isTypeScript: boolean = false) {
-    const nodes: Node[] = [];
+// function parseTypeScriptCode(code: string) {
+//     return parseJavaScriptCode(code, true);
+// }
 
-    //generate an ast from the code
-    const ast = generateBabelAst(code, isTypeScript);
-    if (ast) {
-        //traverse the ast, making a Node for each babelNode along the way
-        traverseBabelAst(ast, (babelNode: BabelNode) => {
-            if (isNumber(babelNode.start) && isNumber(babelNode.end)) {
-                if (isBabelNodeAString(babelNode)) {
-                    const node = NodeFactory.createNode('string', {
-                        start: babelNode.start,
-                        end: babelNode.end,
-                    });
-                    if (node) {
-                        nodes.push(node);
-                    }
-                } else if (isBabelNodeABlock(babelNode)) {
-                    const node = NodeFactory.createNode('block', {
-                        start: babelNode.start,
-                        end: babelNode.end,
-                    });
-                    if (node) {
-                        nodes.push(node);
-                    }
-                }
-            }
-        });
-    } else {
-        //failed to generate ast
-    }
+// function parseJsonCode(code: string) {
+//     const nodes: Node[] = [];
 
-    return nodes;
-}
+//     const jsonAst = generateJsonAst(code);
+//     if (jsonAst) {
+//         traverseJsonAst(jsonAst, jsonNode => {
+//             const start = get(jsonNode, 'loc.start.offset');
+//             const end = get(jsonNode, 'loc.end.offset');
+//             if (isJsonNodeAString(jsonNode)) {
+//                 const node = NodeFactory.createNode(
+//                     'string',
+//                     new Boundary(start, end)
+//                 );
+//                 if (node) {
+//                     nodes.push(node);
+//                 }
+//             }
+//         });
+//     }
 
-function parseTypeScriptCode(code: string) {
-    return parseJavaScriptCode(code, true);
-}
+//     return nodes;
+// }
 
-function parseJsonCode(code: string) {
-    const nodes: Node[] = [];
-
-    const jsonAst = generateJsonAst(code);
-    if (jsonAst) {
-        traverseJsonAst(jsonAst, jsonNode => {
-            const start = get(jsonNode, 'loc.start.offset');
-            const end = get(jsonNode, 'loc.end.offset');
-            if (isJsonNodeAString(jsonNode)) {
-                const node = NodeFactory.createNode('string', { start, end });
-                if (node) {
-                    nodes.push(node);
-                }
-            }
-        });
-    }
-
-    return nodes;
-}
-
-export function parseCode(code: string, language: string) {
-    try {
-        if (isJavaScript(language)) {
-            return parseJavaScriptCode(code);
-        } else if (isTypeScript(language)) {
-            return parseTypeScriptCode(code);
-        } else if (isJson(language)) {
-            return parseJsonCode(code);
-        } else {
-            //language is not supported
-            notify(`The language "${language}" is not supported at this time`);
-        }
-    } catch (err) {
-        console.log('​catch -> err=', err);
-        //failed to parse the file; notify the user
-        notify(
-            `Failed to parse the file.  Please fix any errors in the file and try again.`
-        );
-    }
-}
+// export function parseCode(code: string, language: string) {
+//     try {
+//         if (isJavaScript(language)) {
+//             return parseJavaScriptCode(code);
+//         } else if (isTypeScript(language)) {
+//             return parseTypeScriptCode(code);
+//         } else if (isJson(language)) {
+//             return parseJsonCode(code);
+//         } else {
+//             //language is not supported
+//             notify(`The language "${language}" is not supported at this time`);
+//         }
+//     } catch (err) {
+//         console.log('​catch -> err=', err);
+//         //failed to parse the file; notify the user
+//         notify(
+//             `Failed to parse the file.  Please fix any errors in the file and try again.`
+//         );
+//     }
+// }
 
 function generateJsonAst(code: string) {
     const jsonParse = require('json-to-ast');
     return jsonParse(code);
 }
 
-function generateBabelAst(code: string, isTypeScript: boolean = false) {
+export function generateBabelAst(code: string, isTypeScript: boolean = false) {
     //use try-catch b/c babel will throw an error if it can't parse the file
     //(ie. if it runs into a "SyntaxError" or something that it can't handle)
     //In this case, display a notification that an error occurred so that the
@@ -429,16 +382,7 @@ export function filterBabelAst(
     return filteredNodes;
 }
 
-export function isBabelNodeAString(node: BabelNode) {
-    return (
-        isBabelStringLiteral(node) ||
-        isBabelTemplateLiteral(node) ||
-        isBabelDirective(node)
-    );
-}
-export function isBabelNodeABlock(node: BabelNode) {
-    return isBabelBlockStatement(node) || isBabelObjectExpression(node);
-}
+
 
 function isJsonNodeAString(node) {
     return (
