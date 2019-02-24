@@ -13,10 +13,7 @@ import {
     parse as babelParse,
     ParserOptions as BabelParserOptions,
 } from '@babel/parser';
-import {
-    Node as BabelNode,
-    traverse,
-} from '@babel/types';
+import { Node as BabelNode, traverse } from '@babel/types';
 import { isArray, isObject, isNumber, isString, get } from 'lodash';
 import Boundary from './Boundary';
 
@@ -45,9 +42,16 @@ export function addTextEditorCommand(
     context.subscriptions.push(command);
 }
 
+export function getPackageJson() {
+    return require('../package.json');
+}
+
 export function getExtensionName() {
-    const packageJson = require('../package.json');
-    return packageJson.displayName;
+    return getPackageJson().displayName;
+}
+
+export function getExtensionCommands() {
+    return getPackageJson().contributes.commands;
 }
 
 export function getCurrentEditor() {
@@ -73,6 +77,37 @@ export function getSelectedText(editor: TextEditor) {
         );
     }
     return [''];
+}
+export function getBoundaryText(boundary: Boundary, editor: TextEditor) {
+    return editor.document.getText(
+        createRangeFromBoundary(editor.document, boundary)
+    );
+}
+
+export function getLineNumberAtOffset(offset: number, document: TextDocument) {
+    return document.positionAt(offset).line;
+}
+
+export function getFirstNonWhitespaceCharOnLine(
+    lineNumber: number,
+    document: TextDocument
+) {
+    const lineText = document.lineAt(lineNumber).text;
+    return lineText[
+        document.lineAt(lineNumber).firstNonWhitespaceCharacterIndex
+    ];
+}
+
+export function getLengthOfLine(lineNumber: number, document: TextDocument) {
+    return document.lineAt(lineNumber).text.length;
+}
+
+export function getOffsetOfLineAndChar(
+    lineNumber: number,
+    characterNumber: number,
+    document: TextDocument
+) {
+    return document.offsetAt(new Position(lineNumber, characterNumber));
 }
 
 export function getLanguage(editor: TextEditor) {
@@ -147,7 +182,7 @@ export async function makeModifications(
     editor: TextEditor,
     modifications: Modification[]
 ) {
-    await editor.edit(
+    return await editor.edit(
         editBuilder => {
             modifications.forEach(modification => {
                 if (modification) {
@@ -225,17 +260,10 @@ export async function copy() {
 }
 
 /* AST stuff */
-export function isJavaScript(language: string) {
-    return language === 'javascript';
-}
-export function isTypeScript(language: string) {
-    return language === 'typescript';
-}
-export function isJson(language: string) {
-    return language === 'json';
-}
-
-export function traverseBabelAst(babelAst: BabelNode, fnToApplyToEveryNode: Function) {
+export function traverseBabelAst(
+    babelAst: BabelNode,
+    fnToApplyToEveryNode: Function
+) {
     traverse(babelAst, {
         enter(babelNode) {
             fnToApplyToEveryNode(babelNode);
@@ -243,7 +271,7 @@ export function traverseBabelAst(babelAst: BabelNode, fnToApplyToEveryNode: Func
     });
 }
 
-function traverseJsonAst(jsonAstNode, fnToApplyToEveryNode: Function) {
+export function traverseJsonAst(jsonAstNode, fnToApplyToEveryNode: Function) {
     if (jsonAstNode) {
         //if the current child is an array, just call traverse on all
         //it's elements
@@ -270,51 +298,7 @@ function traverseJsonAst(jsonAstNode, fnToApplyToEveryNode: Function) {
 //     return parseJavaScriptCode(code, true);
 // }
 
-// function parseJsonCode(code: string) {
-//     const nodes: Node[] = [];
-
-//     const jsonAst = generateJsonAst(code);
-//     if (jsonAst) {
-//         traverseJsonAst(jsonAst, jsonNode => {
-//             const start = get(jsonNode, 'loc.start.offset');
-//             const end = get(jsonNode, 'loc.end.offset');
-//             if (isJsonNodeAString(jsonNode)) {
-//                 const node = NodeFactory.createNode(
-//                     'string',
-//                     new Boundary(start, end)
-//                 );
-//                 if (node) {
-//                     nodes.push(node);
-//                 }
-//             }
-//         });
-//     }
-
-//     return nodes;
-// }
-
-// export function parseCode(code: string, language: string) {
-//     try {
-//         if (isJavaScript(language)) {
-//             return parseJavaScriptCode(code);
-//         } else if (isTypeScript(language)) {
-//             return parseTypeScriptCode(code);
-//         } else if (isJson(language)) {
-//             return parseJsonCode(code);
-//         } else {
-//             //language is not supported
-//             notify(`The language "${language}" is not supported at this time`);
-//         }
-//     } catch (err) {
-//         console.log('​catch -> err=', err);
-//         //failed to parse the file; notify the user
-//         notify(
-//             `Failed to parse the file.  Please fix any errors in the file and try again.`
-//         );
-//     }
-// }
-
-function generateJsonAst(code: string) {
+export function generateJsonAst(code: string) {
     const jsonParse = require('json-to-ast');
     return jsonParse(code);
 }
@@ -336,10 +320,17 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
 
     //add "typescript" plugin if language is typescript
     if (isTypeScript) {
-        parserOptions.plugins = ['typescript'];
+        parserOptions.plugins = [
+            'typescript',
+            'classProperties', // <- this is needed for typescript classes
+        ];
     }
 
-    return babelParse(code, parserOptions);
+    try {
+        return babelParse(code, parserOptions);
+    } catch (error) {
+        console.log('​}catch -> error=', error);
+    }
 }
 
 export function filterBabelAst(
@@ -380,13 +371,4 @@ export function filterBabelAst(
         }
     }
     return filteredNodes;
-}
-
-
-
-function isJsonNodeAString(node) {
-    return (
-        node.type === 'Identifier' ||
-        (node.type === 'Literal' && isString(node.value))
-    );
 }
