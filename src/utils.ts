@@ -8,6 +8,7 @@ import {
     Range,
     TextDocument,
     TextEditorEdit,
+    workspace,
 } from 'vscode';
 import {
     parse as babelParse,
@@ -40,6 +41,45 @@ export function addTextEditorCommand(
 ) {
     const command = commands.registerTextEditorCommand(name, fn, thisObj);
     context.subscriptions.push(command);
+}
+
+export async function createEditor(language: string) {
+    const doc = await workspace.openTextDocument({
+        language,
+    });
+
+    //show the editor so that it's the "activeTextEditor"
+    const editor = await window.showTextDocument(doc);
+
+    return editor;
+}
+
+async function setEditorText(editor: TextEditor, newText: string) {
+    const oldTextRange = new Range(
+        editor.document.positionAt(0),
+        editor.document.positionAt(editor.document.getText().length)
+    );
+    await editor.edit((editBuilder: TextEditorEdit) => {
+        editBuilder.replace(oldTextRange, newText);
+    });
+}
+
+export async function runTestCaseInEditor(
+    testCase,
+    editor: TextEditor,
+    command: Function,
+    thisObj: any = {}
+) {
+    const { startingCode, cursorPosition } = testCase;
+
+    await setEditorText(editor, startingCode);
+    await setCursor(editor, cursorPosition);
+
+    // await commands.executeCommand(`vks.${commandName}`); // <- i tried this
+    // but it seems it is not awaiting for some reason
+    await command.call(thisObj, editor);
+
+    return editor;
 }
 
 export function getPackageJson() {
@@ -82,6 +122,10 @@ export function getBoundaryText(boundary: Boundary, editor: TextEditor) {
     return editor.document.getText(
         createRangeFromBoundary(editor.document, boundary)
     );
+}
+export function getTextBetween(start: number, end: number, editor: TextEditor) {
+    const doc = editor.document;
+    return doc.getText(new Range(doc.positionAt(start), doc.positionAt(end)));
 }
 
 export function getLineNumberAtOffset(offset: number, document: TextDocument) {
@@ -146,7 +190,6 @@ export async function deleteBetweenBoundary(
         });
     }
 }
-
 function createModification(method, params) {
     return {
         method,
@@ -224,7 +267,7 @@ export async function setCursor(
 }
 
 export function notify(msg: any) {
-    window.showInformationMessage(`${getExtensionName()}: ${msg}`);
+    window.showInformationMessage(`[${getExtensionName()}] ${msg}`);
 }
 
 export function getWordAtPosition(
@@ -318,11 +361,12 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
         allowSuperOutsideMethod: true,
     };
 
-    //add "typescript" plugin if language is typescript
+    //add "typescript" plugins if language is typescript
     if (isTypeScript) {
         parserOptions.plugins = [
             'typescript',
-            'classProperties', // <- this is needed for typescript classes
+            'classProperties',
+            'dynamicImport',
         ];
     }
 
@@ -331,44 +375,4 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
     } catch (error) {
         console.log('​}catch -> error=', error);
     }
-}
-
-export function filterBabelAst(
-    astNode: BabelNode | null,
-    cursor: number,
-    fnToApplyToEveryNode: Function
-) {
-    let filteredNodes: BabelNode[] = [];
-
-    if (astNode) {
-        //if the current child is an array, just call filterAst on all
-        //it's elements
-        if (isArray(astNode)) {
-            //call filterAst on all children
-            for (const item of astNode) {
-                filteredNodes = filteredNodes.concat(
-                    filterBabelAst(item, cursor, fnToApplyToEveryNode)
-                );
-            }
-        } else if (isObject(astNode)) {
-            //apply the function to this node
-            if (fnToApplyToEveryNode(astNode, cursor)) {
-                //if it returns truthy, add this node to filteredNodes
-                filteredNodes.push(astNode);
-            }
-            //then call filterAst on all children
-            for (const key in astNode) {
-                if (astNode.hasOwnProperty(key)) {
-                    filteredNodes = filteredNodes.concat(
-                        filterBabelAst(
-                            astNode[key],
-                            cursor,
-                            fnToApplyToEveryNode
-                        )
-                    );
-                }
-            }
-        }
-    }
-    return filteredNodes;
 }
