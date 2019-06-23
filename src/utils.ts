@@ -10,13 +10,11 @@ import {
     TextEditorEdit,
     workspace,
 } from 'vscode';
-import {
-    parse as babelParse,
-    ParserOptions as BabelParserOptions,
-} from '@babel/parser';
-import { Node as BabelNode, traverse } from '@babel/types';
-import { isArray, isObject, isNumber, isString, get } from 'lodash';
-import Boundary from './Boundary';
+
+export interface Boundary {
+    start: number;
+    end: number;
+}
 
 export interface Modification {
     method: 'insert' | 'delete';
@@ -255,11 +253,11 @@ export async function setCursor(
     editor: TextEditor,
     offsets: number | number[]
 ) {
-    if (!isArray(offsets)) {
-        offsets = [offsets];
+    if (!require('lodash').isArray(offsets)) {
+        offsets = [offsets as number];
     }
 
-    editor.selections = offsets.map(offset => {
+    editor.selections = (offsets as number[]).map(offset => {
         const pos = editor.document.positionAt(offset);
         return new Selection(pos, pos);
     });
@@ -304,10 +302,10 @@ export async function copy() {
 
 /* AST stuff */
 export function traverseBabelAst(
-    babelAst: BabelNode,
+    babelAst,
     fnToApplyToEveryNode: Function
 ) {
-    traverse(babelAst, {
+    require('@babel/types').traverse(babelAst, {
         enter(babelNode) {
             fnToApplyToEveryNode(babelNode);
         },
@@ -318,6 +316,7 @@ export function traverseJsonAst(jsonAstNode, fnToApplyToEveryNode: Function) {
     if (jsonAstNode) {
         //if the current child is an array, just call traverse on all
         //it's elements
+        let { isArray, isObject } = require('lodash');
         if (isArray(jsonAstNode)) {
             //call traverse on all children
             for (const item of jsonAstNode) {
@@ -351,7 +350,7 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
     //(ie. if it runs into a "SyntaxError" or something that it can't handle)
     //In this case, display a notification that an error occurred so that the
     //user knows why the command didn't work
-    const parserOptions: BabelParserOptions = {
+    const parserOptions: any = {
         sourceType: 'unambiguous', //auto-detect "script" files vs "module" files
 
         //make the parser as lenient as possible
@@ -371,7 +370,7 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
     }
 
     try {
-        return babelParse(code, parserOptions);
+        return require('@babel/parser').parse(code, parserOptions);
     } catch (error) {
         console.log('​}catch -> error=', error);
     }
