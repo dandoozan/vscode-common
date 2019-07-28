@@ -301,10 +301,7 @@ export async function copy() {
 }
 
 /* AST stuff */
-export function traverseBabelAst(
-    babelAst,
-    fnToApplyToEveryNode: Function
-) {
+export function traverseBabelAst(babelAst, fnToApplyToEveryNode: Function) {
     require('@babel/types').traverse(babelAst, {
         enter(babelNode) {
             fnToApplyToEveryNode(babelNode);
@@ -346,11 +343,7 @@ export function generateJsonAst(code: string) {
 }
 
 export function generateBabelAst(code: string, isTypeScript: boolean = false) {
-    //use try-catch b/c babel will throw an error if it can't parse the file
-    //(ie. if it runs into a "SyntaxError" or something that it can't handle)
-    //In this case, display a notification that an error occurred so that the
-    //user knows why the command didn't work
-    const parserOptions: any = {
+    const parserOptions = {
         sourceType: 'unambiguous', //auto-detect "script" files vs "module" files
 
         //make the parser as lenient as possible
@@ -358,20 +351,43 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
         allowAwaitOutsideFunction: true,
         allowReturnOutsideFunction: true,
         allowSuperOutsideMethod: true,
+
+        //include plugins for experimental features so that the
+        //parser is more lenient when parsing code
+        plugins: [
+            'asyncGenerators',
+            'bigInt',
+            'classProperties',
+            'classPrivateProperties',
+            'classPrivateMethods',
+            'doExpressions',
+            'dynamicImport',
+            'exportDefaultFrom',
+            'exportNamespaceFrom',
+            'functionBind',
+            'functionSent',
+            'importMeta',
+            'nullishCoalescingOperator',
+            'numericSeparator',
+            'objectRestSpread',
+            'optionalCatchBinding',
+            'optionalChaining',
+            'throwExpressions',
+        ],
     };
 
-    //add "typescript" plugins if language is typescript
     if (isTypeScript) {
-        parserOptions.plugins = [
-            'typescript',
-            'classProperties',
-            'dynamicImport',
-        ];
+        parserOptions.plugins.push('typescript');
     }
 
+    //use try-catch b/c babel will throw an error if it can't parse the file
+    //(ie. if it runs into a "SyntaxError" or something that it can't handle)
     try {
         return require('@babel/parser').parse(code, parserOptions);
     } catch (error) {
-        console.log('​}catch -> error=', error);
+        console.log('​error=', error);
+        notify(
+            `Failed to parse file.  Error: ${error.toString()}`
+        );
     }
 }
