@@ -4,28 +4,17 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "postinstall": "node ./node_modules/vscode/bin/install",
-        "watch": "tsc -watch -p ./",
-        "test": "jest"
+        "build": "jest && tsc",
+        "test": "jest",
+        "watch": "tsc -watch -p ./"
     },
-    "author": "",
-    "license": "ISC",
-    "engines": {
-        "vscode": "^1.30.0"
-    },
-    "dependencies": {
-        "@babel/parser": "^7.2.3",
-        "@babel/types": "^7.2.2",
-        "json-to-ast": "^2.1.0",
-        "lodash": "^4.17.11"
-    },
+    "dependencies": {},
     "devDependencies": {
         "@types/jest": "^23.3.10",
-        "@types/lodash": "^4.14.119",
         "@types/node": "^10.12.18",
         "jest": "^23.6.0",
         "ts-jest": "^23.10.5",
-        "typescript": "^3.2.2",
-        "vscode": "^1.1.26"
+        "typescript": "^3.5.3",
+        "vscode": "^1.1.36"
     }
 }
