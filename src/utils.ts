@@ -73,8 +73,6 @@ export async function runTestCaseInEditor(
     await setEditorText(editor, startingCode);
     await setCursor(editor, cursorPosition);
 
-    // await commands.executeCommand(`vks.${commandName}`); // <- i tried this
-    // but it seems it is not awaiting for some reason
     await command.call(thisObj, editor);
 
     return editor;
@@ -311,8 +309,7 @@ export function traverseBabelAst(babelAst, fnToApplyToEveryNode: Function) {
 
 export function traverseJsonAst(jsonAstNode, fnToApplyToEveryNode: Function) {
     if (jsonAstNode) {
-        //if the current child is an array, just call traverse on all
-        //it's elements
+        //if the current child is an array, just call traverse on all it's elements
         let { isArray, isObject } = require('lodash');
         if (isArray(jsonAstNode)) {
             //call traverse on all children
@@ -333,18 +330,13 @@ export function traverseJsonAst(jsonAstNode, fnToApplyToEveryNode: Function) {
     }
 }
 
-// function parseTypeScriptCode(code: string) {
-//     return parseJavaScriptCode(code, true);
-// }
-
 export function generateJsonAst(code: string) {
-    const jsonParse = require('json-to-ast');
-    return jsonParse(code);
+    return require('json-to-ast')(code);
 }
 
 export function generateBabelAst(code: string, isTypeScript: boolean = false) {
     const parserOptions = {
-        sourceType: 'unambiguous', //auto-detect "script" files vs "module" files
+        sourceType: 'unambiguous', //auto-detect "script" vs "module" files
 
         //make the parser as lenient as possible
         allowImportExportEverywhere: true,
