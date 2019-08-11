@@ -78,16 +78,12 @@ export async function runTestCaseInEditor(
     return editor;
 }
 
-export function getPackageJson() {
-    return require('../package.json');
-}
-
 export function getExtensionName() {
-    return getPackageJson().displayName;
+    return require('../package.json').displayName;
 }
 
 export function getExtensionCommands() {
-    return getPackageJson().contributes.commands;
+    return require('../package.json').contributes.commands;
 }
 
 export function getCurrentEditor() {
