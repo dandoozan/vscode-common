@@ -340,9 +340,12 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
         allowReturnOutsideFunction: true,
         allowSuperOutsideMethod: true,
 
-        //include plugins for experimental features so that the
-        //parser is more lenient when parsing code
         plugins: [
+            //treat javascript files like jsx (since jsx is a superset of javascript)
+            'jsx',
+
+            //add experimental feature plugins (so that the
+            //parser is more lenient when parsing code)
             'asyncGenerators',
             'bigInt',
             'classProperties',
@@ -374,8 +377,6 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
         return require('@babel/parser').parse(code, parserOptions);
     } catch (error) {
         console.log('​error=', error);
-        notify(
-            `Failed to parse file.  Error: ${error.toString()}`
-        );
+        notify(`Failed to parse file.  Error: ${error.toString()}`);
     }
 }
