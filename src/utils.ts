@@ -339,6 +339,7 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
         allowAwaitOutsideFunction: true,
         allowReturnOutsideFunction: true,
         allowSuperOutsideMethod: true,
+        allowUndeclaredExports: true,
 
         plugins: [
             //treat javascript files like jsx (since jsx is a superset of javascript)
@@ -351,6 +352,7 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
             'classProperties',
             'classPrivateProperties',
             'classPrivateMethods',
+            // 'decorators', //Received Error: The 'decorators' plugin requires a 'decoratorsBeforeExport' option, whose value must be a boolean. If you are migrating from Babylon/Babel 6 or want to use the old decorators proposal, you should use the 'decorators-legacy' plugin instead of 'decorators'.
             'doExpressions',
             'dynamicImport',
             'exportDefaultFrom',
@@ -358,11 +360,14 @@ export function generateBabelAst(code: string, isTypeScript: boolean = false) {
             'functionBind',
             'functionSent',
             'importMeta',
+            'logicalAssignment',
             'nullishCoalescingOperator',
             'numericSeparator',
             'objectRestSpread',
             'optionalCatchBinding',
             'optionalChaining',
+            'partialApplication',
+            // 'pipelineOperator', //Received Error: 'pipelineOperator' requires 'proposal' option whose value should be one of: 'minimal', 'smart', 'fsharp'
             'throwExpressions',
         ],
     };
